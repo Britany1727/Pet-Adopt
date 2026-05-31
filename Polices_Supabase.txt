@@ -1,0 +1,128 @@
+-- Esquema completo para Mascotas App
+
+-- Perfil público del usuario
+CREATE TABLE public.profiles (
+    id          UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    username    TEXT UNIQUE NOT NULL,
+    avatar_url  TEXT,
+    role        TEXT NOT NULL DEFAULT 'cliente' CHECK (role IN ('refugio', 'cliente')),
+    latitude    DOUBLE PRECISION,
+    longitude   DOUBLE PRECISION,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Mascotas (publicadas por refugios)
+CREATE TABLE IF NOT EXISTS public.mascotas (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT NOT NULL,
+    especie     TEXT NOT NULL DEFAULT '',
+    edad        INTEGER NOT NULL DEFAULT 0,
+    tamaño      TEXT NOT NULL DEFAULT '',
+    descripcion TEXT,
+    raza        TEXT NOT NULL DEFAULT '',
+    image_url   TEXT,
+    seller_id   UUID NOT NULL REFERENCES public.profiles(id),
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Salas de chat
+CREATE TABLE public.rooms (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT,
+    created_by  UUID REFERENCES public.profiles(id),
+    mascota_id  UUID REFERENCES public.mascotas(id),
+    seller_id   UUID REFERENCES public.profiles(id),
+    client_id   UUID REFERENCES public.profiles(id),
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Mensajes
+CREATE TABLE public.messages (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    room_id     UUID NOT NULL REFERENCES public.rooms(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL REFERENCES public.profiles(id),
+    content     TEXT NOT NULL,
+    image_url   TEXT,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices
+CREATE INDEX IF NOT EXISTS idx_messages_room_created ON public.messages(room_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_mascotas_seller ON public.mascotas(seller_id);
+
+-- RLS
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mascotas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+-- Políticas profiles
+CREATE POLICY "profiles_select" ON public.profiles
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "profiles_update" ON public.profiles
+    FOR UPDATE USING (auth.uid() = id);
+
+-- Políticas mascotas
+CREATE POLICY "mascotas_select" ON public.mascotas
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "mascotas_insert" ON public.mascotas
+    FOR INSERT WITH CHECK (auth.uid() = seller_id);
+
+CREATE POLICY "mascotas_update" ON public.mascotas
+    FOR UPDATE USING (auth.uid() = seller_id);
+
+CREATE POLICY "mascotas_delete" ON public.mascotas
+    FOR DELETE USING (auth.uid() = seller_id);
+
+-- Políticas rooms
+CREATE POLICY "rooms_select" ON public.rooms
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "rooms_insert" ON public.rooms
+    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+-- Políticas messages
+CREATE POLICY "messages_select" ON public.messages
+    FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "messages_insert" ON public.messages
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE IF NOT EXISTS public.messages;
+
+-- Función trigger
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.profiles (id, username, avatar_url, role)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1)),
+    NULL,
+    COALESCE(NEW.raw_user_meta_data->>'role', 'cliente')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Storage bucket for images
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('chat-images', 'chat-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Autenticados pueden subir"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'chat-images');
+
+CREATE POLICY "Lectura pública"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'chat-images');
