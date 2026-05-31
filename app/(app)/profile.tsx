@@ -72,28 +72,14 @@ export default function ProfileScreen() {
     const ext = extMatch ? extMatch[1].toLowerCase() : 'jpg';
     const fileName = `avatars/${user!.id}/${Date.now()}.${ext}`;
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('No hay sesión activa');
+    const result = await fetch(uri);
+    const blob = await result.blob();
 
-    const formData = new FormData();
-    formData.append('file', {
-      uri,
-      type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-      name: `avatar.${ext}`,
-    } as any);
+    const { error } = await supabase.storage
+      .from('chat-images')
+      .upload(fileName, blob, { contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}` });
 
-    const response = await fetch(
-      `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/chat-images/${fileName}`,
-      {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
-        body: formData as any,
-      },
-    );
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Error al subir imagen: ${text}`);
-    }
+    if (error) throw new Error(error.message);
 
     const { data: { publicUrl } } = supabase.storage
       .from('chat-images')
@@ -135,7 +121,7 @@ export default function ProfileScreen() {
         avatarUrl = await uploadAvatar(avatarUri);
       }
 
-      updateProfile({
+      await updateProfile({
         data: {
           username: isRefugio ? (shelterName.trim() || undefined) : undefined,
           fullName: isRefugio ? undefined : (fullName.trim() || undefined),

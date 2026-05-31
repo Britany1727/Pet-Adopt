@@ -79,7 +79,7 @@ export function useAuth() {
     register: registerMutation.mutate,
     loginWithGoogle: googleMutation.mutate,
     logout,
-    updateProfile: profileMutation.mutate,
+    updateProfile: profileMutation.mutateAsync,
     isUpdatingProfile: profileMutation.isPending,
     isLoading: loginMutation.isPending || registerMutation.isPending,
     isGoogleLoading: googleMutation.isPending,
