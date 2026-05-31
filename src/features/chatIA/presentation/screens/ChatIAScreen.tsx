@@ -16,35 +16,53 @@ import { MessageBubble } from '../components/MessageBubble';
 import { useChat } from '../hooks/useChatIA';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import LottieView from 'lottie-react-native';
 
 const { width } = Dimensions.get('window');
 
+const QUICK_QUESTIONS = [
+  { icon: '🐶', text: '¿Cuáles son las mascotas más juguetonas?' },
+  { icon: '🏠', text: '¿Qué raza es mejor para departamento?' },
+  { icon: '🩺', text: '¿Qué cuidados necesita un perro?' },
+  { icon: '😊', text: '¿Cómo saber si una mascota es feliz?' },
+  { icon: '🍎', text: '¿Qué alimentos no deben comer?' },
+  { icon: '📚', text: '¿Cómo educar a mi mascota?' },
+];
+
 export const ChatScreen: React.FC = () => {
-  // --- TU LÓGICA INTACTA ❤️ ---
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef<FlatList>(null);
   const { messages, isLoading, error, sendMessage, clearChat } = useChat();
 
-  const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
-    const text = inputText;
+  const handleSend = async (text?: string) => {
+    const msg = text ?? inputText;
+    if (!msg.trim() || isLoading) return;
     setInputText('');
-    await sendMessage(text);
+    await sendMessage(msg);
     flatListRef.current?.scrollToEnd({ animated: true });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Fondo Atmosférico Glassmorphism */}
       <View style={styles.ambientContainer} pointerEvents="none">
         <View style={[styles.ambientGlow, styles.glowTop]} />
         <View style={[styles.ambientGlow, styles.glowBottom]} />
+        <LottieView
+          source={require("../../../../assets/lotties/pet2.json")}
+          autoPlay
+          loop
+          style={styles.backgroundLottie}
+        />
       </View>
 
-      {/* Header (TopAppBar) */}
       <View style={styles.glassHeader}>
         <View style={styles.headerTitleRow}>
-          <MaterialIcons name="auto-awesome" size={24} color="#ac2a5d" />
+          <LottieView
+            source={require("../../../../assets/lotties/pet4.json")}
+            autoPlay
+            loop
+            style={{ width: 32, height: 32 }}
+          />
           <Text style={styles.headerTitle}>Chat con Gemini</Text>
         </View>
         <TouchableOpacity onPress={clearChat} style={styles.clearBtn} activeOpacity={0.7}>
@@ -67,6 +85,34 @@ export const ChatScreen: React.FC = () => {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <LottieView
+                source={require("../../../../assets/lotties/pet3.json")}
+                autoPlay
+                loop
+                style={styles.emptyLottie}
+              />
+              <Text style={styles.emptyTitle}>¡Bienvenido!</Text>
+              <Text style={styles.emptySub}>
+                ¿Qué te interesa saber acerca de las mascotas?{'\n'}
+                Pregúntame sobre cuidados, razas, alimentación y más.
+              </Text>
+              <View style={styles.quickGrid}>
+                {QUICK_QUESTIONS.map((q, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.quickChip}
+                    activeOpacity={0.7}
+                    onPress={() => handleSend(q.text)}
+                  >
+                    <Text style={styles.quickChipIcon}>{q.icon}</Text>
+                    <Text style={styles.quickChipText} numberOfLines={2}>{q.text}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          }
         />
 
         {isLoading && (
@@ -92,11 +138,11 @@ export const ChatScreen: React.FC = () => {
             placeholder='Escribe un mensaje...'
             placeholderTextColor="#8a7176"
             multiline
-            onSubmitEditing={handleSend}
+            onSubmitEditing={() => handleSend()}
           />
           <TouchableOpacity
             style={[styles.sendButtonWrapper, (!inputText.trim() || isLoading) && styles.sendButtonDisabled]}
-            onPress={handleSend}
+            onPress={() => handleSend()}
             disabled={!inputText.trim() || isLoading}
             activeOpacity={0.8}
           >
@@ -134,6 +180,12 @@ const styles = StyleSheet.create({
   glowBottom: {
     width: width * 0.8, height: width * 0.8, backgroundColor: '#abedff',
     bottom: -width * 0.2, right: -width * 0.2, filter: 'blur(60px)',
+  },
+  backgroundLottie: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    opacity: 0.08,
   },
 
   // --- Header ---
@@ -173,6 +225,56 @@ const styles = StyleSheet.create({
   messagesList: { 
     padding: 16, 
     paddingBottom: 24 
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+  },
+  emptyLottie: {
+    width: 120,
+    height: 120,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#161c28',
+    marginTop: 8,
+  },
+  emptySub: {
+    fontSize: 14,
+    color: '#574146',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginTop: 6,
+    marginBottom: 20,
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+  },
+  quickChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(172,42,93,0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: '100%',
+  },
+  quickChipIcon: {
+    fontSize: 16,
+  },
+  quickChipText: {
+    fontSize: 12,
+    color: '#574146',
+    fontWeight: '600',
+    flex: 1,
   },
   loadingContainer: {
     flexDirection: 'row',

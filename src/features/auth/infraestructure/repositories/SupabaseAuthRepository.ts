@@ -1,13 +1,42 @@
-// src/features/auth/infraestructure/repositories/SupabaseAuthRepository.ts
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { supabase } from "../../../../shared/infrastructure/supabase/client";
 import { User, UserRole } from "../../domain/entities/User";
-import { IAuthRepository } from "../../domain/repositories/IAuthRepository";
+import { IAuthRepository, ProfileData } from "../../domain/repositories/IAuthRepository";
+
+const PROFILE_SELECT = `
+  username,
+  avatar_url,
+  role,
+  full_name,
+  identificacion,
+  telefono,
+  ocupacion,
+  descripcion_hogar,
+  direccion_texto,
+  latitude,
+  longitude
+`;
+
+function mapProfile(userId: string, email: string, profile: any): User {
+  return {
+    id: userId,
+    email,
+    username: profile?.username ?? "",
+    avatarUrl: profile?.avatar_url ?? undefined,
+    role: profile?.role ?? "cliente",
+    fullName: profile?.full_name ?? undefined,
+    identificacion: profile?.identificacion ?? undefined,
+    telefono: profile?.telefono ?? undefined,
+    ocupacion: profile?.ocupacion ?? undefined,
+    descripcionHogar: profile?.descripcion_hogar ?? undefined,
+    direccionTexto: profile?.direccion_texto ?? undefined,
+    latitude: profile?.latitude ?? undefined,
+    longitude: profile?.longitude ?? undefined,
+  };
+}
 
 export class SupabaseAuthRepository implements IAuthRepository {
-  // ── métodos existentes sin cambio ──────────────────────────────────────────
-
   async login(email: string, password: string): Promise<User> {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -16,16 +45,10 @@ export class SupabaseAuthRepository implements IAuthRepository {
     if (error || !data.user) throw error;
     const { data: profile } = await supabase
       .from("profiles")
-      .select("username, avatar_url, role")
+      .select(PROFILE_SELECT)
       .eq("id", data.user.id)
       .single();
-    return {
-      id: data.user.id,
-      email: data.user.email!,
-      username: profile?.username ?? "",
-      avatarUrl: profile?.avatar_url ?? undefined,
-      role: profile?.role ?? "cliente",
-    };
+    return mapProfile(data.user.id, data.user.email!, profile);
   }
 
   async register(
@@ -67,19 +90,11 @@ export class SupabaseAuthRepository implements IAuthRepository {
     if (!user) return null;
     const { data: profile } = await supabase
       .from("profiles")
-      .select("username, avatar_url, role")
+      .select(PROFILE_SELECT)
       .eq("id", user.id)
       .single();
-    return {
-      id: user.id,
-      email: user.email!,
-      username: profile?.username ?? "",
-      avatarUrl: profile?.avatar_url ?? undefined,
-      role: profile?.role ?? "cliente",
-    };
+    return mapProfile(user.id, user.email!, profile);
   }
-
-  // ── Google Sign-In ──────────────────────────────────────────────────────────
 
   async signInWithGoogle(): Promise<User> {
     const redirectUri = AuthSession.makeRedirectUri({ scheme: "michatapp" });
@@ -94,14 +109,12 @@ export class SupabaseAuthRepository implements IAuthRepository {
     if (error || !data?.url)
       throw new Error(error?.message ?? "No se obtuvo la URL de Google");
 
-    // ← usar WebBrowser, NO AuthSession
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
 
     if (result.type !== "success" || !result.url) {
       throw new Error("Login con Google cancelado");
     }
 
-    // Extraer tokens del hash de la URL de callback
     const url = new URL(result.url);
     const params = new URLSearchParams(url.hash.replace("#", ""));
     const accessToken = params.get("access_token");
@@ -118,12 +131,10 @@ export class SupabaseAuthRepository implements IAuthRepository {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("username, avatar_url, role")
+      .select(PROFILE_SELECT)
       .eq("id", sessionData.user.id)
       .single();
-    // ── Forzar role selection en Google Sign-In ──
-    // El trigger de Supabase crea el perfil con role='cliente',
-    // pero el usuario de Google aún no ha elegido rol.
+
     const currentRole: UserRole = profile?.role ?? "pending";
     if (currentRole === "cliente") {
       await supabase.from("profiles").update({ role: "pending" }).eq("id", sessionData.user.id);
@@ -143,6 +154,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
       role: currentRole === "cliente" ? "pending" : currentRole,
     };
   }
+
   async resetPasswordForEmail(email: string): Promise<void> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: 'petadoptapp://(auth)/update-password',
@@ -163,10 +175,9 @@ export class SupabaseAuthRepository implements IAuthRepository {
 
     if (error) throw error;
 
-    // Devolver el usuario actualizado
     const { data: profile } = await supabase
       .from("profiles")
-      .select("username, avatar_url, role")
+      .select(PROFILE_SELECT)
       .eq("id", userId)
       .single();
 
@@ -174,12 +185,40 @@ export class SupabaseAuthRepository implements IAuthRepository {
       data: { user },
     } = await supabase.auth.getUser();
 
-    return {
-      id: userId,
-      email: user!.email!,
-      username: profile?.username ?? "",
-      avatarUrl: profile?.avatar_url ?? undefined,
-      role: profile?.role ?? role,
-    };
+    return mapProfile(userId, user!.email!, profile);
+  }
+
+  async updateProfile(userId: string, data: ProfileData): Promise<User> {
+    const payload: Record<string, any> = {};
+
+    if (data.username !== undefined) payload.username = data.username;
+    if (data.fullName !== undefined) payload.full_name = data.fullName;
+    if (data.identificacion !== undefined) payload.identificacion = data.identificacion;
+    if (data.telefono !== undefined) payload.telefono = data.telefono;
+    if (data.ocupacion !== undefined) payload.ocupacion = data.ocupacion;
+    if (data.descripcionHogar !== undefined) payload.descripcion_hogar = data.descripcionHogar;
+    if (data.direccionTexto !== undefined) payload.direccion_texto = data.direccionTexto;
+    if (data.latitude !== undefined) payload.latitude = data.latitude;
+    if (data.longitude !== undefined) payload.longitude = data.longitude;
+    if (data.avatarUrl !== undefined) payload.avatar_url = data.avatarUrl;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(payload)
+      .eq("id", userId);
+
+    if (error) throw error;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select(PROFILE_SELECT)
+      .eq("id", userId)
+      .single();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    return mapProfile(userId, user!.email!, profile);
   }
 }

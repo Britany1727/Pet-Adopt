@@ -3,6 +3,14 @@ import { DeleteMascotasUseCase } from '@features/mascotas/aplication/usecases/De
 import { SupabaseMascotasRepository } from '@features/mascotas/infrastructure/repositories/SupabaseMacotasRepository';
 import { GetOrCreateSellerRoomUseCase } from '@features/chat/application/usecases/GetOrCreateSellerRoomUseCase';
 import { SupabaseChatRepository } from '@features/chat/infrastructure/repositories/SupabaseChatRepository';
+import {
+  useMyAdoptionRequests,
+  useRequestForMascota,
+} from '@features/adopcion/presentation/hooks/useAdptionRequest';
+import {
+  AdoptionRequestModal,
+  RequestStatusBadge,
+} from '@features/adopcion/presentation/components/AdoptionRequestModal'
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -20,17 +28,26 @@ const mascotasRepo = new SupabaseMascotasRepository();
 const deleteMascota = new DeleteMascotasUseCase(mascotasRepo);
 
 export default function MascotaDetailScreen() {
-  // --- TU LÓGICA INTACTA ❤️ ---
   const { id, name, especie, edad, tamaño, descripcion, raza, imageUrl, sellerId, sellerName } =
     useLocalSearchParams<{
       id: string; name: string; especie: string; edad: string; tamaño: string;
       descripcion: string; raza: string;
       imageUrl?: string; sellerId: string; sellerName?: string;
     }>();
+
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // Hooks de solicitudes (activos para clientes)
+  const { sendRequest, isSending, cancelRequest } = useMyAdoptionRequests();
+  const { existingRequest, isLoading: checkingRequest, refetch } =
+    useRequestForMascota(id);
+
+  const isOwner = user?.id === sellerId;
+  const isClient = user?.role === 'cliente' && !isOwner;
 
   const handleDelete = () => {
     Alert.alert('Eliminar mascota', `¿Estás seguro de eliminar a "${name}"?`, [
@@ -56,7 +73,7 @@ export default function MascotaDetailScreen() {
     if (!user || !sellerId) return;
     setLoading(true);
     try {
-      const room = await getOrCreateSellerRoom.execute(sellerId);
+      const room = await getOrCreateSellerRoom.execute(sellerId, user.id);
       router.push({
         pathname: '/(app)/chat/[roomId]',
         params: { roomId: room.id, productName: name },
@@ -68,7 +85,90 @@ export default function MascotaDetailScreen() {
     }
   };
 
-  // --- UI Y DISEÑO ---
+  const handleSendRequest = async (message?: string) => {
+    await sendRequest({ mascotaId: id, sellerId, message });
+    refetch();
+  };
+
+  const handleCancelRequest = (requestId: string) => {
+    Alert.alert(
+      'Cancelar solicitud',
+      '¿Deseas cancelar tu solicitud de adopción? Podrás volver a enviarla más tarde.',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Sí, cancelar',
+          style: 'destructive',
+          onPress: () => {
+            cancelRequest(requestId);
+            refetch();
+          },
+        },
+      ],
+    );
+  };
+
+  const renderAdoptionButton = () => {
+    if (checkingRequest) {
+      return (
+        <View style={styles.mainActionBtnWrapper}>
+          <View style={[styles.mainActionBtn, { backgroundColor: '#f5f5f5' }]}>
+            <ActivityIndicator color="#ac2a5d" />
+          </View>
+        </View>
+      );
+    }
+
+    if (existingRequest) {
+      return (
+        <TouchableOpacity
+          style={styles.mainActionBtnWrapper}
+          onPress={() => setModalVisible(true)}
+          activeOpacity={0.85}
+        >
+          <View style={[
+            styles.mainActionBtn,
+            {
+              backgroundColor:
+                existingRequest.status === 'accepted' ? '#d1e7dd' :
+                existingRequest.status === 'rejected' ? '#f8d7da' :
+                'rgba(172,42,93,0.08)',
+              borderWidth: 2,
+              borderColor:
+                existingRequest.status === 'accepted' ? '#2e7d32' :
+                existingRequest.status === 'rejected' ? '#ba1a1a' :
+                '#ac2a5d',
+            },
+          ]}>
+            <RequestStatusBadge status={existingRequest.status} />
+            <Text style={[styles.mainActionText, { color: '#574146', fontSize: 13, marginTop: 4 }]}>
+              Toca para ver detalles de la solicitud
+            </Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        style={styles.mainActionBtnWrapper}
+        onPress={() => setModalVisible(true)}
+        disabled={isSending}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={['#ac2a5d', '#fc9d41']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.mainActionBtn}
+        >
+          <MaterialIcons name="favorite" size={20} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.mainActionText}>Solicitar adoptar a {name}</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Fondo de Imagen Absoluto */}
@@ -153,7 +253,7 @@ export default function MascotaDetailScreen() {
                 <Text style={styles.shelterName}>{sellerName}</Text>
                 <Text style={styles.shelterRole}>Propietario / Refugio</Text>
               </View>
-              {user?.role === 'cliente' && (
+              {isClient && (
                 <View style={styles.chatIconBadge}>
                   <MaterialIcons name="chat" size={18} color="#ac2a5d" />
                 </View>
@@ -163,62 +263,84 @@ export default function MascotaDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Barra Inferior Fija (Adoptar o Eliminar) */}
+      {/* Barra Inferior Fija Unificada */}
       <View style={styles.bottomBar}>
-        {user?.id === sellerId ? (
-          <TouchableOpacity 
-            style={[styles.mainActionBtnWrapper, { shadowColor: '#ba1a1a' }]} 
-            onPress={handleDelete} 
-            disabled={deleting}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.mainActionBtn, { backgroundColor: '#ffdad6', borderWidth: 1, borderColor: '#ba1a1a' }]}>
-              {deleting ? (
-                <ActivityIndicator color="#ba1a1a" />
-              ) : (
-                <>
-                  <MaterialIcons name="delete-outline" size={20} color="#ba1a1a" style={{ marginRight: 8 }} />
-                  <Text style={[styles.mainActionText, { color: '#ba1a1a' }]}>Eliminar Publicación</Text>
-                </>
-              )}
-            </View>
-          </TouchableOpacity>
-        ) : (
-          user?.role === 'cliente' && (
-            <>
+        {isOwner ? (
+          <View style={{ flexDirection: 'row', gap: 10, flex: 1 }}>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => router.push({ pathname: '/(app)/edit-mascota/[id]', params: { id } })}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.mainActionBtn, { backgroundColor: '#ffd9e4', borderWidth: 1, borderColor: '#ac2a5d' }]}>
+                <MaterialIcons name="edit" size={20} color="#ac2a5d" style={{ marginRight: 6 }} />
+                <Text style={[styles.mainActionText, { color: '#ac2a5d' }]}>Editar</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={handleDelete}
+              disabled={deleting}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.mainActionBtn, { backgroundColor: '#ffdad6', borderWidth: 1, borderColor: '#ba1a1a' }]}>
+                {deleting ? (
+                  <ActivityIndicator color="#ba1a1a" />
+                ) : (
+                  <>
+                    <MaterialIcons name="delete-outline" size={20} color="#ba1a1a" style={{ marginRight: 6 }} />
+                    <Text style={[styles.mainActionText, { color: '#ba1a1a' }]}>Eliminar</Text>
+                  </>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        ) : isClient ? (
+          <>
+            {/* Botón Principal Dinámico (Solicitud de Adopción) */}
+            {renderAdoptionButton()}
+
+            {/* Fila de Botones Secundarios Organizados */}
+            <View style={styles.secondaryActionsRow}>
               <TouchableOpacity 
-                style={styles.mainActionBtnWrapper} 
+                style={styles.secondaryBtn} 
                 onPress={handleChat} 
                 disabled={loading}
                 activeOpacity={0.8}
               >
-                <LinearGradient 
-                  colors={['#ac2a5d', '#fc9d41']} 
-                  start={{x:0,y:0}} end={{x:1,y:1}} 
-                  style={styles.mainActionBtn}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <>
-                      <Text style={styles.mainActionText}>Preguntar por {name}</Text>
-                      <MaterialIcons name="arrow-forward" size={20} color="#fff" style={{ marginLeft: 8 }} />
-                    </>
-                  )}
-                </LinearGradient>
+                {loading ? (
+                  <ActivityIndicator color="#ac2a5d" size="small" />
+                ) : (
+                  <>
+                    <MaterialIcons name="chat-bubble-outline" size={18} color="#ac2a5d" style={{ marginRight: 6 }} />
+                    <Text style={styles.secondaryBtnText}>Chatear</Text>
+                  </>
+                )}
               </TouchableOpacity>
+
               <TouchableOpacity
-                style={styles.mapBtn}
+                style={styles.secondaryBtn}
                 onPress={() => router.push({ pathname: '/(app)/map', params: { targetSellerId: sellerId } })}
                 activeOpacity={0.8}
               >
-                <MaterialIcons name="location-on" size={20} color="#ac2a5d" style={{ marginRight: 6 }} />
-                <Text style={styles.mapBtnText}>Ver ubicación del refugio</Text>
+                <MaterialIcons name="location-on" size={18} color="#ac2a5d" style={{ marginRight: 6 }} />
+                <Text style={styles.secondaryBtnText}>Ver en mapa</Text>
               </TouchableOpacity>
-            </>
-          )
-        )}
+            </View>
+          </>
+        ) : null}
       </View>
+
+      {/* Modal de Solicitud de Adopción */}
+      <AdoptionRequestModal
+        visible={modalVisible}
+        mascotaName={name}
+        isSending={isSending}
+        existingRequest={existingRequest}
+        onClose={() => setModalVisible(false)}
+        onSend={handleSendRequest}
+        onCancel={handleCancelRequest}
+      />
     </View>
   );
 }
@@ -245,8 +367,6 @@ const styles = StyleSheet.create({
   placeholderEmoji: {
     fontSize: 80,
   },
-  
-  // --- Controles Superiores ---
   topBar: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 60 : 40,
@@ -271,16 +391,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-
-  // --- Scroll y Contenido ---
   scrollContent: {
     flexGrow: 1,
-    paddingTop: height * 0.45, // Empuja el contenido hacia abajo
-    paddingBottom: 100, // Espacio para la barra fija
+    paddingTop: height * 0.45,
+    paddingBottom: 180, // Espacio suficiente para la barra inferior expandida
   },
   sheet: {
     flex: 1,
-    backgroundColor: 'rgba(249, 249, 255, 0.95)', // Casi sólido para lectura
+    backgroundColor: 'rgba(249, 249, 255, 0.95)',
     borderTopLeftRadius: 48,
     borderTopRightRadius: 48,
     paddingHorizontal: 24,
@@ -334,8 +452,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 14,
   },
-
-  // --- Grid de Atributos ---
   infoGrid: {
     flexDirection: 'row',
     gap: 12,
@@ -377,8 +493,6 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
     textAlign: 'center',
   },
-
-  // --- Acerca De ---
   aboutSection: {
     marginBottom: 32,
   },
@@ -393,8 +507,6 @@ const styles = StyleSheet.create({
     color: '#574146',
     lineHeight: 24,
   },
-
-  // --- Tarjeta de Refugio ---
   shelterCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -447,8 +559,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // --- Barra Inferior ---
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -457,7 +567,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 32 : 24,
-    backgroundColor: 'rgba(249, 249, 255, 0.9)',
+    backgroundColor: 'rgba(249, 249, 255, 0.95)',
     borderTopWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.6)',
   },
@@ -468,32 +578,38 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 6,
     borderRadius: 999,
+    marginBottom: 12,
   },
   mainActionBtn: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     borderRadius: 999,
-    paddingVertical: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
     paddingVertical: 14,
-    marginTop: 12,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: '#ac2a5d',
-  },
-  mapBtnText: {
-    color: '#ac2a5d',
-    fontWeight: '700',
-    fontSize: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mainActionText: {
     color: '#fff',
     fontWeight: '800',
     fontSize: 16,
+  },
+  secondaryActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  secondaryBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: '#ac2a5d',
+    backgroundColor: '#fff',
+  },
+  secondaryBtnText: {
+    color: '#ac2a5d',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

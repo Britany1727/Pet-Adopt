@@ -21,11 +21,19 @@ export const useChat = () => {
       const { userMessage, assistantMessage } =
         await sendMessageUseCase.execute(userInput, messages);
       setMessages(prev => [...prev, userMessage, assistantMessage]);
-        Speech.speak(assistantMessage.content, {
+      const cleanText = assistantMessage.content
+        .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/`[^`]*`/g, '')
+        .replace(/[#*_`\[\]]/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+      Speech.speak(cleanText, {
         language: 'es-ES',
         pitch: 1.0,
         rate: 1.0,
-        });
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {

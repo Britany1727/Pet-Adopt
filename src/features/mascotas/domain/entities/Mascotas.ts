@@ -9,5 +9,6 @@ export interface Mascotas {
   imageUrl?: string;
   sellerId: string;
   sellerName?: string;
+  adopted: boolean;
   createdAt: Date;
 }

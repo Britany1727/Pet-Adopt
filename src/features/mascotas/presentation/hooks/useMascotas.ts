@@ -1,10 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SupabaseMascotasRepository } from "../../infrastructure/repositories/SupabaseMacotasRepository";
 import { CreateMascotasUseCase } from "../../aplication/usecases/CreateMascotasUseCase";
+import { UpdateMascotasUseCase } from "../../aplication/usecases/UpdateMascotasUseCase";
 import { DeleteMascotasUseCase } from "../../aplication/usecases/DeleteMascotasUseCase";
 
 const mascotasRepo = new SupabaseMascotasRepository();
 const createMascotaUseCase = new CreateMascotasUseCase(mascotasRepo);
+const updateMascotaUseCase = new UpdateMascotasUseCase(mascotasRepo);
 const deleteMascotaUseCase = new DeleteMascotasUseCase(mascotasRepo);
 
 export function useMascotas() {
@@ -40,6 +42,24 @@ export function useMascotas() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (params: {
+      id: string;
+      data: {
+        name?: string;
+        especie?: string;
+        edad?: number;
+        tamaño?: string;
+        descripcion?: string;
+        raza?: string;
+        imageUrl?: string | null;
+      };
+    }) => updateMascotaUseCase.execute(params.id, params.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["mascotas"] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteMascotaUseCase.execute(id),
     onSuccess: () => {
@@ -52,8 +72,10 @@ export function useMascotas() {
     isLoading,
     error,
     createMascota: createMutation.mutate,
+    updateMascota: updateMutation.mutate,
     deleteMascota: deleteMutation.mutate,
     isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };
 }

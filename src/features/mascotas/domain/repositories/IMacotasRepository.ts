@@ -13,5 +13,17 @@ export interface IMascotasRepository {
         sellerId: string,
         imageUrl?: string   
     ): Promise<Mascotas>;
+    updateMascota(
+        id: string,
+        data: {
+            name?: string;
+            especie?: string;
+            edad?: number;
+            tamaño?: string;
+            descripcion?: string;
+            raza?: string;
+            imageUrl?: string | null;
+        }
+    ): Promise<Mascotas>;
     deleteMascota(id: string): Promise<void>;
 }

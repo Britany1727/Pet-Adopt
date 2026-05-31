@@ -1,8 +1,9 @@
-// src/features/auth/presentation/hooks/useAuth.ts
 import { GoogleSignInUseCase } from "@features/auth/aplication/usecases/GoogleSignInUseCase";
 import { LoginUseCase } from "@features/auth/aplication/usecases/LoginUseCase";
 import { RegisterUseCase } from "@features/auth/aplication/usecases/RegisterUseCase";
-import { UserRole } from "@features/auth/domain/entities/User";
+import { UpdateProfileUseCase } from "@features/auth/aplication/usecases/UpdateProfileUseCase";
+import { UserRole, User } from "@features/auth/domain/entities/User";
+import { ProfileData } from "@features/auth/domain/repositories/IAuthRepository";
 import { SupabaseAuthRepository } from "@features/auth/infraestructure/repositories/SupabaseAuthRepository";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -19,6 +20,7 @@ const authRepo = new SupabaseAuthRepository();
 const loginUseCase = new LoginUseCase(authRepo);
 const registerUseCase = new RegisterUseCase(authRepo);
 const googleSignInUseCase = new GoogleSignInUseCase(authRepo);
+const updateProfileUseCase = new UpdateProfileUseCase(authRepo);
 
 export function useAuth() {
   const { user, setUser } = useAuthStore();
@@ -42,17 +44,23 @@ export function useAuth() {
     },
   });
 
-  // ← nuevo
   const googleMutation = useMutation({
     mutationFn: () => googleSignInUseCase.execute(),
     onSuccess: (user) => {
       setUser(user);
-      // Si no tiene rol definido, ir a elegir rol
       if (user.role === "pending") {
         router.replace("/(auth)/select-role" as any);
       } else {
         router.replace("/(app)");
       }
+    },
+  });
+
+  const profileMutation = useMutation({
+    mutationFn: ({ data }: { data: ProfileData }) =>
+      updateProfileUseCase.execute(user!.id, data),
+    onSuccess: (updatedUser) => {
+      setUser(updatedUser);
     },
   });
 
@@ -69,14 +77,17 @@ export function useAuth() {
     user,
     login: loginMutation.mutate,
     register: registerMutation.mutate,
-    loginWithGoogle: googleMutation.mutate, // ← nuevo
+    loginWithGoogle: googleMutation.mutate,
     logout,
+    updateProfile: profileMutation.mutate,
+    isUpdatingProfile: profileMutation.isPending,
     isLoading: loginMutation.isPending || registerMutation.isPending,
-    isGoogleLoading: googleMutation.isPending, // ← nuevo
+    isGoogleLoading: googleMutation.isPending,
     error:
       loginMutation.error?.message ??
       registerMutation.error?.message ??
       googleMutation.error?.message ??
+      profileMutation.error?.message ??
       null,
   };
 }

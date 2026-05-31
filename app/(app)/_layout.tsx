@@ -23,6 +23,10 @@ export default function AppLayout() {
       <Stack.Screen name="mascota/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="sellers" options={{ headerShown: false }} />
       <Stack.Screen
+        name="adoption-requests"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
         name="map"
         options={{
           title: "Mapa",
@@ -31,6 +35,7 @@ export default function AppLayout() {
         }}
       />
       <Stack.Screen name="chat-ia" options={{ headerShown: false }} />
+      <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen
         name="location-settings"
         options={{
