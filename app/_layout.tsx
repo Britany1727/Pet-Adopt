@@ -75,6 +75,8 @@ function AuthGuard() {
       const data = response.notification.request.content.data as Record<string, string> | undefined;
       if (data?.screen === 'adoption-requests') {
         router.push('/(app)/adoption-request' as any);
+      } else if (data?.roomId) {
+        router.push(`/(app)/chat/${data.roomId}` as any);
       }
     });
 
@@ -83,6 +85,52 @@ function AuthGuard() {
       sub.remove();
     };
   }, []);
+
+  const inChatRoom = segments[0] === '(app)' && segments[1] === 'chat' && !!segments[2];
+
+  useEffect(() => {
+    if (!user || inChatRoom) return;
+
+    const channel = supabase
+      .channel('global-chat-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+      }, async (payload) => {
+        if (payload.new.user_id === user.id) return;
+
+        try {
+          const [roomRes, profileRes] = await Promise.all([
+            supabase.from('rooms').select('name, seller_id, client_id').eq('id', payload.new.room_id).single(),
+            supabase.from('profiles').select('username').eq('id', payload.new.user_id).single(),
+          ]);
+
+          const senderName = profileRes.data?.username ?? 'Alguien';
+          const roomName = roomRes.data?.name ?? 'Chat';
+          const msgContent = payload.new.content || '';
+          const body = msgContent.length > 80 ? `${msgContent.slice(0, 80)}...` : msgContent || '📷 Imagen';
+
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `💬 ${senderName}`,
+              body,
+              subtitle: roomName,
+              sound: 'default',
+              badge: 1,
+              data: { roomId: payload.new.room_id },
+              ...(Platform.OS === 'android' && { channelId: 'chat-messages' }),
+            },
+            trigger: null,
+          });
+        } catch (e) {
+          console.warn('❌ Global notification error:', e);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, inChatRoom]);
 
   useEffect(() => {
     if (!isAuthReady) return;
