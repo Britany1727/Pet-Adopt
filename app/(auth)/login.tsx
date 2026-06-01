@@ -1,13 +1,18 @@
-﻿// app/(auth)/login.tsx
 import { useAuth } from '@features/auth/presentation/hooks/useAuth';
 import { Link } from 'expo-router';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  StyleSheet, Text, TextInput,
+  ActivityIndicator, StyleSheet, Text, TextInput,
   TouchableOpacity, View,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+
+const C = {
+  primary: '#b3006a', onPrimary: '#ffffff', background: '#f9f9ff',
+  surface: '#ffffff', onSurface: '#151c27', onSurfaceVariant: '#5b3f49',
+  outlineVariant: '#e3bdc8', outline: '#e3bdc8',
+};
 
 export default function LoginScreen() {
   const [email, setEmail]       = useState('');
@@ -16,19 +21,29 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topGradient} pointerEvents="none" />
-      <View style={styles.card}>
+      <View style={styles.ambientContainer} pointerEvents="none">
+        <View style={[styles.ambientGlow, { top: -80, left: -60, width: 200, height: 200 }]} />
+        <View style={[styles.ambientGlow, { bottom: -60, right: -40, width: 180, height: 180 }]} />
+        <LottieView
+          source={require('../../src/assets/lotties/huellas.json')}
+          autoPlay loop
+          style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.06 }}
+        />
+      </View>
+
+      <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.card}>
         <View style={styles.stitchBar} />
 
-        <View style={styles.brand}>
-          <Image
-            source={require('../../src/assets/images/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
+        <View style={styles.lottieWrapper}>
+          <LottieView
+            source={require('../../src/assets/lotties/pet.json')}
+            autoPlay loop
+            style={styles.lottie}
           />
-          <Text style={styles.brandTitle}>Mascotas</Text>
-          <Text style={styles.brandSub}>Adopción responsable</Text>
         </View>
+
+        <Text style={styles.title}>Iniciar Sesión</Text>
+        <Text style={styles.sub}>Ingresa a tu cuenta para continuar</Text>
 
         {error && (
           <View style={styles.errorBox}>
@@ -36,7 +51,7 @@ export default function LoginScreen() {
           </View>
         )}
 
-        <Text style={styles.label}>Correo Electrónico</Text>
+        <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
         <TextInput
           style={styles.input}
           placeholder="ejemplo@correo.com"
@@ -47,42 +62,46 @@ export default function LoginScreen() {
           keyboardType="email-address"
         />
 
-        <Text style={styles.label}>Contraseña</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="••••••••"
-            placeholderTextColor="rgba(143,110,121,0.5)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
+        <View style={styles.labelRow}>
+          <LottieView
+            source={require('../../src/assets/lotties/locker.json')}
+            autoPlay loop
+            style={styles.labelLottie}
           />
+          <Text style={styles.label}>CONTRASEÑA</Text>
+        </View>
+        <TextInput
+          style={styles.input}
+          placeholder="••••••••"
+          placeholderTextColor="rgba(143,110,121,0.5)"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
-          <Link href="/(auth)/reset" style={styles.forgotLink}>
-            ¿Olvidaste tu contraseña?
-          </Link>
+        <Link href="/(auth)/reset" style={styles.forgotLink}>
+          ¿Olvidaste tu contraseña?
+        </Link>
 
-        {/* Botón email/password */}
         <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
+          style={[styles.btn, isLoading && styles.btnDisabled]}
           onPress={() => login({ email, password })}
           disabled={isLoading || isGoogleLoading}
           activeOpacity={0.85}
         >
           {isLoading
             ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.buttonText}>Iniciar Sesión →</Text>}
+            : <Text style={styles.btnText}>Iniciar Sesión →</Text>}
         </TouchableOpacity>
 
-        {/* Divisor */}
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>o continúa con</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Botón Google */}
         <TouchableOpacity
-          style={[styles.googleButton, isGoogleLoading && styles.buttonDisabled]}
+          style={[styles.googleBtn, isGoogleLoading && styles.btnDisabled]}
           onPress={() => loginWithGoogle()}
           disabled={isLoading || isGoogleLoading}
           activeOpacity={0.85}
@@ -91,7 +110,6 @@ export default function LoginScreen() {
             <ActivityIndicator color="#b3006a" />
           ) : (
             <View style={styles.googleInner}>
-              {/* Ícono G de Google con colores */}
               <View style={styles.googleIcon}>
                 <Text style={styles.googleIconText}>G</Text>
               </View>
@@ -102,16 +120,15 @@ export default function LoginScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
-          <Link href="/(auth)/register" style={styles.link}>
+          <Link href="/(auth)/register" style={styles.footerLink}>
             Regístrate gratis
           </Link>
         </View>
-      </View>
+      </Animated.View>
 
-      <View style={styles.footerNav}>
-        <Text style={styles.footerNavLink}>Soporte</Text>
-        <Text style={styles.footerNavLink}>Términos</Text>
-        <Text style={styles.footerNavLink}>Privacidad</Text>
+      <View style={styles.bottomBrand}>
+        <Text style={styles.paw}>🐾</Text>
+        <Text style={styles.brandText}>Mascotas · Adopción Responsable</Text>
       </View>
       <View style={styles.bottomLine} />
     </View>
@@ -120,70 +137,77 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, backgroundColor: '#f9f9ff',
+    flex: 1, backgroundColor: C.background,
     justifyContent: 'center', alignItems: 'center', padding: 24,
   },
-  topGradient: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 200,
-    backgroundColor: 'rgba(255, 217, 228, 0.35)',
+  ambientContainer: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
   },
-  bottomLine: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    height: 3, backgroundColor: '#b3006a',
+  ambientGlow: {
+    position: 'absolute', borderRadius: 100,
+    backgroundColor: C.primary, opacity: 0.04,
   },
   card: {
     width: '100%', maxWidth: 420,
-    backgroundColor: '#f9f9ff',
-    borderWidth: 1, borderColor: 'rgba(227, 189, 200, 0.4)',
+    backgroundColor: C.surface,
+    borderWidth: 1, borderColor: C.outlineVariant,
     borderRadius: 24, padding: 28, overflow: 'hidden',
   },
   stitchBar: {
     position: 'absolute', top: 0, left: 0, right: 0,
-    height: 4, backgroundColor: '#e3bdc8', opacity: 0.5,
+    height: 4, backgroundColor: C.outlineVariant, opacity: 0.5,
   },
-  brand: { alignItems: 'center', marginBottom: 24, marginTop: 8 },
-  logo: { width: 80, height: 80, marginBottom: 12 },
-  brandTitle: {
-    fontSize: 26, fontWeight: '700', color: '#b3006a',
-    letterSpacing: -0.5, textAlign: 'center',
+  lottieWrapper: {
+    width: 90, height: 90, alignSelf: 'center', marginBottom: 8,
   },
-  brandSub: { fontSize: 13, color: '#5f5e5e', marginTop: 4 },
+  lottie: { width: '100%', height: '100%' },
+  title: {
+    fontSize: 22, fontWeight: '700', color: C.primary,
+    textAlign: 'center', marginBottom: 4,
+  },
+  sub: {
+    fontSize: 14, color: C.onSurfaceVariant,
+    textAlign: 'center', marginBottom: 20,
+  },
   errorBox: {
     backgroundColor: '#ffdad6',
     borderWidth: 1, borderColor: 'rgba(186, 26, 26, 0.3)',
     borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 14,
   },
   errorText: { color: '#93000a', fontSize: 13, textAlign: 'center' },
+  labelRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5,
+  },
+  labelLottie: { width: 20, height: 20 },
   label: {
-    fontSize: 12, fontWeight: '600', color: '#5b3f49',
-    letterSpacing: 0.5, marginBottom: 5,
+    fontSize: 11, fontWeight: '700', color: C.onSurfaceVariant,
+    letterSpacing: 0.6,
   },
   input: {
-    width: '100%', backgroundColor: '#f9f9ff',
-    borderWidth: 1, borderColor: '#e3bdc8',
-    borderRadius: 10, paddingVertical: 14, paddingHorizontal: 16,
-    fontSize: 15, color: '#151c27', marginBottom: 14,
+    width: '100%', backgroundColor: C.surface,
+    borderWidth: 1, borderColor: C.outline,
+    borderRadius: 10, padding: 14,
+    fontSize: 14, color: C.onSurface, marginBottom: 14,
   },
-  button: {
-    backgroundColor: '#b3006a', borderRadius: 10,
-    paddingVertical: 14, alignItems: 'center',
-    justifyContent: 'center', marginTop: 4,
+  forgotLink: {
+    color: C.primary, fontSize: 13, fontWeight: '600',
+    textAlign: 'right', marginBottom: 16, marginTop: -8,
   },
-  buttonDisabled: { opacity: 0.7 },
-  buttonText: { color: '#ffffff', fontWeight: '600', fontSize: 14 },
-
-  // Divisor
+  btn: {
+    backgroundColor: C.primary, borderRadius: 12,
+    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
+  },
+  btnDisabled: { opacity: 0.7 },
+  btnText: { color: '#ffffff', fontWeight: '700', fontSize: 15 },
   dividerRow: {
     flexDirection: 'row', alignItems: 'center',
     marginVertical: 16, gap: 8,
   },
-  dividerLine: { flex: 1, height: 1, backgroundColor: '#e3bdc8' },
-  dividerText: { fontSize: 12, color: '#8f6e79', fontWeight: '500' },
-
-  // Google
-  googleButton: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1, borderColor: '#e3bdc8',
+  dividerLine: { flex: 1, height: 1, backgroundColor: C.outlineVariant },
+  dividerText: { fontSize: 12, color: C.onSurfaceVariant, fontWeight: '500' },
+  googleBtn: {
+    backgroundColor: C.surface,
+    borderWidth: 1, borderColor: C.outlineVariant,
     borderRadius: 10, paddingVertical: 13,
     alignItems: 'center', justifyContent: 'center',
   },
@@ -194,18 +218,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   googleIconText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  googleText: { color: '#151c27', fontWeight: '600', fontSize: 14 },
-
+  googleText: { color: C.onSurface, fontWeight: '600', fontSize: 14 },
   footer: {
     flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', marginTop: 20, flexWrap: 'wrap',
   },
-  footerText: { color: '#5f5e5e', fontSize: 14 },
-  link: { color: '#b3006a', fontWeight: '700', fontSize: 14 },
-  forgotLink: {
-    color: '#b3006a', fontSize: 13, fontWeight: '600',
-    textAlign: 'right', marginBottom: 16, marginTop: -8,
+  footerText: { color: C.onSurfaceVariant, fontSize: 14 },
+  footerLink: { color: C.primary, fontWeight: '700', fontSize: 14 },
+  bottomBrand: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 6, marginTop: 20, opacity: 0.6,
   },
-  footerNav: { flexDirection: 'row', gap: 20, marginTop: 16 },
-  footerNavLink: { color: '#8f6e79', fontSize: 12 },
+  paw: { fontSize: 16 },
+  brandText: { fontSize: 12, color: C.onSurfaceVariant },
+  bottomLine: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    height: 3, backgroundColor: C.primary,
+  },
 });

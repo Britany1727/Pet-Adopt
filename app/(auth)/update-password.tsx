@@ -20,8 +20,16 @@ export default function UpdatePasswordScreen() {
   const router = useRouter();
 
   const handleUpdate = async () => {
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    if (password.length < 8) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      Alert.alert('Error', 'La contraseña debe contener al menos una mayúscula');
+      return;
+    }
+    if (!/[^a-zA-Z0-9\s]/.test(password)) {
+      Alert.alert('Error', 'La contraseña debe contener al menos un símbolo especial');
       return;
     }
     if (password !== confirm) {
@@ -72,7 +80,7 @@ export default function UpdatePasswordScreen() {
         <Text style={styles.label}>NUEVA CONTRASEÑA</Text>
         <TextInput
           style={styles.input}
-          placeholder="Mín. 6 caracteres"
+          placeholder="Mín. 8 caracteres, 1 mayúscula, 1 símbolo"
           placeholderTextColor="rgba(143,110,121,0.5)"
           value={password}
           onChangeText={setPassword}

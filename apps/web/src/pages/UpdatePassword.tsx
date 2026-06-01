@@ -44,8 +44,16 @@ export default function UpdatePassword() {
   const handleSubmit = async () => {
     setError('');
 
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('La contraseña debe contener al menos una mayúscula');
+      return;
+    }
+    if (!/[^a-zA-Z0-9\s]/.test(password)) {
+      setError('La contraseña debe contener al menos un símbolo especial');
       return;
     }
     if (password !== confirm) {
@@ -117,7 +125,7 @@ export default function UpdatePassword() {
           <input
             style={S.input}
             type="password"
-            placeholder="Mínimo 6 caracteres"
+            placeholder="Mín. 8 caracteres, 1 mayúscula, 1 símbolo"
             value={password}
             onChange={e => setPassword(e.target.value)}
           />
