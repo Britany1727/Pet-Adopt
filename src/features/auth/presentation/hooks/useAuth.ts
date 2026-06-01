@@ -77,6 +77,7 @@ export function useAuth() {
     user,
     login: loginMutation.mutate,
     register: registerMutation.mutate,
+    registerAsync: registerMutation.mutateAsync,
     loginWithGoogle: googleMutation.mutate,
     logout,
     updateProfile: profileMutation.mutateAsync,

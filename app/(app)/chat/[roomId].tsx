@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView, Platform, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 // Nueva paleta de colores adaptada fielmente al HTML del diseño de adopción
 const C = {
@@ -132,7 +133,7 @@ export default function ChatScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <LottieView
-        source={require('../../../src/assets/lotties/flower.json')}
+        source={require('../../../src/assets/lotties/pet.json')}
         autoPlay
         loop
         style={styles.lottieBg}
@@ -140,7 +141,7 @@ export default function ChatScreen() {
 
       <View style={styles.chatHeader}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
+          <Ionicons name="arrow-back-circle" size={30} color="pink" />
         </TouchableOpacity>
         <LottieAvatar size={40} />
         <View style={styles.chatHeaderInfo}>

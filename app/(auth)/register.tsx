@@ -1,30 +1,39 @@
 import { useAuth } from '@features/auth/presentation/hooks/useAuth';
 import { UserRole } from '@features/auth/domain/entities/User';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
 
 export default function RegisterScreen() {
-  const { register, isLoading, error } = useAuth();
+  const { registerAsync, isLoading } = useAuth();
   const router = useRouter();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [role, setRole]         = useState<UserRole>('cliente');
 
-  useEffect(() => {
-    if (error) Alert.alert('Error', error);
-  }, [error]);
-
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!email || !password || !username) {
       Alert.alert('Error', 'Completa todos los campos');
       return;
     }
-    register({ email, password, username, role });
+    try {
+      await registerAsync({ email, password, username, role });
+    } catch (e: any) {
+      const msg = e?.message ?? '';
+      if (msg.toLowerCase().includes('correo') || msg.toLowerCase().includes('confirmación')) {
+        Alert.alert(
+          'Revisa tu correo',
+          `Enviamos un enlace de confirmación a ${email}.\n\nHaz clic en el enlace para activar tu cuenta y luego inicia sesión.`,
+          [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }],
+        );
+      } else {
+        Alert.alert('Error', msg || 'Ocurrió un error al registrarte');
+      }
+    }
   };
 
   return (

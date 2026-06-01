@@ -20,23 +20,24 @@ const PROFILE_SELECT = `
 
 function mapProfile(userId: string, email: string, profile: any): User {
   return {
-    id: userId,
+    id:               userId,
     email,
-    username: profile?.username ?? "",
-    avatarUrl: profile?.avatar_url ?? undefined,
-    role: profile?.role ?? "cliente",
-    fullName: profile?.full_name ?? undefined,
-    identificacion: profile?.identificacion ?? undefined,
-    telefono: profile?.telefono ?? undefined,
-    ocupacion: profile?.ocupacion ?? undefined,
+    username:         profile?.username          ?? "",
+    avatarUrl:        profile?.avatar_url        ?? undefined,
+    role:             profile?.role              ?? "cliente",
+    fullName:         profile?.full_name         ?? undefined,
+    identificacion:   profile?.identificacion    ?? undefined,
+    telefono:         profile?.telefono          ?? undefined,
+    ocupacion:        profile?.ocupacion         ?? undefined,
     descripcionHogar: profile?.descripcion_hogar ?? undefined,
-    direccionTexto: profile?.direccion_texto ?? undefined,
-    latitude: profile?.latitude ?? undefined,
-    longitude: profile?.longitude ?? undefined,
+    direccionTexto:   profile?.direccion_texto   ?? undefined,
+    latitude:         profile?.latitude          ?? undefined,
+    longitude:        profile?.longitude         ?? undefined,
   };
 }
 
 export class SupabaseAuthRepository implements IAuthRepository {
+
   async login(email: string, password: string): Promise<User> {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -60,22 +61,25 @@ export class SupabaseAuthRepository implements IAuthRepository {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { username, role } },
+      options: {
+        data: { username, role },
+        emailRedirectTo: `${process.env.EXPO_PUBLIC_WEB_URL}/confirm`,
+      },
     });
     if (error) throw error;
 
-    if (data.session) {
-      const user = data.session.user;
-      return { id: user.id, email: user.email!, username, role };
+    // Con "Confirm email" activo en Supabase no hay sesión hasta confirmar
+    if (!data.session) {
+      throw new Error(
+        'Revisa tu correo y haz clic en el enlace de confirmación antes de iniciar sesión.'
+      );
     }
 
-    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({ email, password });
-    if (loginError) throw loginError;
-
     return {
-      id: loginData.user.id,
-      email: loginData.user.email!,
-      username, role,
+      id:       data.session.user.id,
+      email:    data.session.user.email!,
+      username,
+      role,
     };
   }
 
@@ -84,9 +88,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const { data: profile } = await supabase
       .from("profiles")
@@ -97,7 +99,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
   }
 
   async signInWithGoogle(): Promise<User> {
-    const redirectUri = AuthSession.makeRedirectUri({ scheme: "michatapp" });
+    const redirectUri = AuthSession.makeRedirectUri({ scheme: "petadoptapp" });
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -135,10 +137,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
       .eq("id", sessionData.user.id)
       .single();
 
-    const currentRole: UserRole = profile?.role ?? "pending";
-    if (currentRole === "cliente") {
-      await supabase.from("profiles").update({ role: "pending" }).eq("id", sessionData.user.id);
-    }
+    const currentRole: UserRole = profile?.role ?? "cliente";
 
     return {
       id: sessionData.user.id,
@@ -151,13 +150,14 @@ export class SupabaseAuthRepository implements IAuthRepository {
         profile?.avatar_url ??
         sessionData.user.user_metadata?.avatar_url ??
         undefined,
-      role: currentRole === "cliente" ? "pending" : currentRole,
+      role: currentRole,
     };
   }
 
   async resetPasswordForEmail(email: string): Promise<void> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'petadoptapp://(auth)/update-password',
+      // El usuario cambia la contraseña en el navegador (Vercel)
+      redirectTo: `${process.env.EXPO_PUBLIC_WEB_URL}/update-password`,
     });
     if (error) throw error;
   }
@@ -172,7 +172,6 @@ export class SupabaseAuthRepository implements IAuthRepository {
       .from("profiles")
       .update({ role })
       .eq("id", userId);
-
     if (error) throw error;
 
     const { data: profile } = await supabase
@@ -181,9 +180,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
       .eq("id", userId)
       .single();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     return mapProfile(userId, user!.email!, profile);
   }
@@ -191,22 +188,21 @@ export class SupabaseAuthRepository implements IAuthRepository {
   async updateProfile(userId: string, data: ProfileData): Promise<User> {
     const payload: Record<string, any> = {};
 
-    if (data.username !== undefined) payload.username = data.username;
-    if (data.fullName !== undefined) payload.full_name = data.fullName;
-    if (data.identificacion !== undefined) payload.identificacion = data.identificacion;
-    if (data.telefono !== undefined) payload.telefono = data.telefono;
-    if (data.ocupacion !== undefined) payload.ocupacion = data.ocupacion;
-    if (data.descripcionHogar !== undefined) payload.descripcion_hogar = data.descripcionHogar;
-    if (data.direccionTexto !== undefined) payload.direccion_texto = data.direccionTexto;
-    if (data.latitude !== undefined) payload.latitude = data.latitude;
-    if (data.longitude !== undefined) payload.longitude = data.longitude;
-    if (data.avatarUrl !== undefined) payload.avatar_url = data.avatarUrl;
+    if (data.username          !== undefined) payload.username          = data.username;
+    if (data.fullName          !== undefined) payload.full_name         = data.fullName;
+    if (data.identificacion    !== undefined) payload.identificacion    = data.identificacion;
+    if (data.telefono          !== undefined) payload.telefono          = data.telefono;
+    if (data.ocupacion         !== undefined) payload.ocupacion         = data.ocupacion;
+    if (data.descripcionHogar  !== undefined) payload.descripcion_hogar = data.descripcionHogar;
+    if (data.direccionTexto    !== undefined) payload.direccion_texto   = data.direccionTexto;
+    if (data.latitude          !== undefined) payload.latitude          = data.latitude;
+    if (data.longitude         !== undefined) payload.longitude         = data.longitude;
+    if (data.avatarUrl         !== undefined) payload.avatar_url        = data.avatarUrl;
 
     const { error } = await supabase
       .from("profiles")
       .update(payload)
       .eq("id", userId);
-
     if (error) throw error;
 
     const { data: profile } = await supabase
@@ -215,9 +211,7 @@ export class SupabaseAuthRepository implements IAuthRepository {
       .eq("id", userId)
       .single();
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
 
     return mapProfile(userId, user!.email!, profile);
   }

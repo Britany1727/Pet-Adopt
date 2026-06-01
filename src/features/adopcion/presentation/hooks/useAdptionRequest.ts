@@ -1,4 +1,5 @@
 import { useAuthStore } from '@features/auth/presentation/store/authStore';
+import { sendPushToUser } from '@shared/utils/pushNotifications';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 
@@ -36,8 +37,14 @@ export function useMyAdoptionRequests() {
   const sendMutation = useMutation({
     mutationFn: (params: { mascotaId: string; sellerId: string; message?: string }) =>
       sendUseCase.execute({ ...params, clientId: user!.id }),
-    onSuccess: () => {
+    onSuccess: (_data, params) => {
       queryClient.invalidateQueries({ queryKey: ['adoption_requests_mine'] });
+      sendPushToUser(
+        params.sellerId,
+        '🐾 Nueva solicitud de adopción',
+        `${user?.username ?? 'Alguien'} quiere adoptar una mascota`,
+        { screen: 'adoption-requests' },
+      );
     },
     onError: (err: Error) => {
       Alert.alert('Error', err.message);

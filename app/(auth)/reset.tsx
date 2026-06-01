@@ -26,13 +26,16 @@ export default function ResetScreen() {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: 'petadoptapp://(auth)/update-password',
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${process.env.EXPO_PUBLIC_WEB_URL}/update-password`,
       });
       if (error) throw error;
+      console.log('✅ resetPasswordForEmail exitoso', JSON.stringify(data));
       setSent(true);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo enviar el correo');
+      console.error('❌ resetPasswordForEmail error completo:', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+      const msg = e?.message || e?.error_description || e?.msg || e?.toString() || 'No se pudo enviar el correo';
+      Alert.alert('Error al enviar correo', msg);
     } finally {
       setLoading(false);
     }

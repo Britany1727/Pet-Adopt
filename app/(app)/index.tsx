@@ -243,7 +243,7 @@ export default function HomeScreen() {
           ListEmptyComponent={
             <View style={styles.searchEmpty}>
               <MaterialIcons name="search-off" size={48} color="#ddbfc5" />
-              <Text style={styles.searchEmptyText}>Sin resultados para "{searchQuery}"</Text>
+              <Text style={styles.searchEmptyText}>{`Sin resultados para "${searchQuery}"`}</Text>
             </View>
           }
           renderItem={({ item }) => (
