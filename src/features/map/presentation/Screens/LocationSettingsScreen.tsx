@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, ScrollView, Modal,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useAuthStore } from '@features/auth/presentation/store/authStore';
@@ -79,7 +80,11 @@ export function LocationSettingsScreen() {
 
   return (
     <View style={styles.wrapper}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Configurar ubicación</Text>
         <Text style={styles.subtitle}>
           Ingresa la ubicación de tu refugio para que los clientes puedan encontrarte
@@ -141,8 +146,9 @@ export function LocationSettingsScreen() {
             : <Text style={styles.saveBtnText}>Guardar ubicación →</Text>}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
 
-      <Modal
+          <Modal
         visible={showMapPicker}
         animationType="slide"
         onRequestClose={() => setShowMapPicker(false)}

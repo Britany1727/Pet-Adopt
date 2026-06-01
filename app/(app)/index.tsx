@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import {
   View, Text, Image, ScrollView, TouchableOpacity, FlatList,
   StyleSheet, ActivityIndicator, Dimensions, Platform, TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -121,6 +122,11 @@ export default function HomeScreen() {
   const adoptadas = filteredAll.filter(m => m.adopted);
 
   return (
+    <View style={{ flex: 1 }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
     <View style={styles.container}>
       <View style={styles.ambientContainer} pointerEvents="none">
         <View style={[styles.ambientGlow, styles.glowTop]} />
@@ -390,6 +396,8 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
+    </View>
+    </KeyboardAvoidingView>
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
           <View style={styles.navItemActive}>
@@ -598,7 +606,6 @@ const styles = StyleSheet.create({
   fab: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
 
   bottomNav: {
-    position: 'absolute', bottom: 0, width: '100%',
     backgroundColor: 'rgba(249, 249, 255, 0.85)',
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center',

@@ -3,7 +3,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator, StyleSheet, Text, TextInput,
-  TouchableOpacity, View,
+  TouchableOpacity, View, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -20,124 +20,129 @@ export default function LoginScreen() {
   const { login, loginWithGoogle, isLoading, isGoogleLoading, error } = useAuth();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.ambientContainer} pointerEvents="none">
-        <View style={[styles.ambientGlow, { top: -80, left: -60, width: 200, height: 200 }]} />
-        <View style={[styles.ambientGlow, { bottom: -60, right: -40, width: 180, height: 180 }]} />
-        <LottieView
-          source={require('../../src/assets/lotties/huellas.json')}
-          autoPlay loop
-          style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.06 }}
-        />
-      </View>
-
-      <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.card}>
-        <View style={styles.stitchBar} />
-
-        <View style={styles.lottieWrapper}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.ambientContainer} pointerEvents="none">
+          <View style={[styles.ambientGlow, { top: -80, left: -60, width: 200, height: 200 }]} />
+          <View style={[styles.ambientGlow, { bottom: -60, right: -40, width: 180, height: 180 }]} />
           <LottieView
-            source={require('../../src/assets/lotties/pet.json')}
+            source={require('../../src/assets/lotties/huellas.json')}
             autoPlay loop
-            style={styles.lottie}
+            style={{ position: 'absolute', width: '100%', height: '100%', opacity: 0.06 }}
           />
         </View>
 
-        <Text style={styles.title}>Iniciar Sesión</Text>
-        <Text style={styles.sub}>Ingresa a tu cuenta para continuar</Text>
+        <Animated.View entering={FadeInDown.duration(400).springify()} style={styles.card}>
+          <View style={styles.stitchBar} />
 
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={styles.lottieWrapper}>
+            <LottieView
+              source={require('../../src/assets/lotties/pet.json')}
+              autoPlay loop
+              style={styles.lottie}
+            />
           </View>
-        )}
 
-        <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="ejemplo@correo.com"
-          placeholderTextColor="rgba(143,110,121,0.5)"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+          <Text style={styles.title}>Iniciar Sesión</Text>
+          <Text style={styles.sub}>Ingresa a tu cuenta para continuar</Text>
 
-        <View style={styles.labelRow}>
-          <LottieView
-            source={require('../../src/assets/lotties/locker.json')}
-            autoPlay loop
-            style={styles.labelLottie}
-          />
-          <Text style={styles.label}>CONTRASEÑA</Text>
-        </View>
-        <TextInput
-          style={styles.input}
-          placeholder="••••••••"
-          placeholderTextColor="rgba(143,110,121,0.5)"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <Link href="/(auth)/reset" style={styles.forgotLink}>
-          ¿Olvidaste tu contraseña?
-        </Link>
-
-        <TouchableOpacity
-          style={[styles.btn, isLoading && styles.btnDisabled]}
-          onPress={() => login({ email, password })}
-          disabled={isLoading || isGoogleLoading}
-          activeOpacity={0.85}
-        >
-          {isLoading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnText}>Iniciar Sesión →</Text>}
-        </TouchableOpacity>
-
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>o continúa con</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.googleBtn, isGoogleLoading && styles.btnDisabled]}
-          onPress={() => loginWithGoogle()}
-          disabled={isLoading || isGoogleLoading}
-          activeOpacity={0.85}
-        >
-          {isGoogleLoading ? (
-            <ActivityIndicator color="#b3006a" />
-          ) : (
-            <View style={styles.googleInner}>
-              <View style={styles.googleIcon}>
-                <Text style={styles.googleIconText}>G</Text>
-              </View>
-              <Text style={styles.googleText}>Continuar con Google</Text>
+          {error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
-        </TouchableOpacity>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
-          <Link href="/(auth)/register" style={styles.footerLink}>
-            Regístrate gratis
+          <Text style={styles.label}>CORREO ELECTRÓNICO</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="ejemplo@correo.com"
+            placeholderTextColor="rgba(143,110,121,0.5)"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <View style={styles.labelRow}>
+            <LottieView
+              source={require('../../src/assets/lotties/locker.json')}
+              autoPlay loop
+              style={styles.labelLottie}
+            />
+            <Text style={styles.label}>CONTRASEÑA</Text>
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="••••••••"
+            placeholderTextColor="rgba(143,110,121,0.5)"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+
+          <Link href="/(auth)/reset" style={styles.forgotLink}>
+            ¿Olvidaste tu contraseña?
           </Link>
-        </View>
-      </Animated.View>
 
-      <View style={styles.bottomBrand}>
-        <Text style={styles.paw}>🐾</Text>
-        <Text style={styles.brandText}>Mascotas · Adopción Responsable</Text>
-      </View>
-      <View style={styles.bottomLine} />
-    </View>
+          <TouchableOpacity
+            style={[styles.btn, isLoading && styles.btnDisabled]}
+            onPress={() => login({ email, password })}
+            disabled={isLoading || isGoogleLoading}
+            activeOpacity={0.85}
+          >
+            {isLoading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.btnText}>Iniciar Sesión →</Text>}
+          </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>o continúa con</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.googleBtn, isGoogleLoading && styles.btnDisabled]}
+            onPress={() => loginWithGoogle()}
+            disabled={isLoading || isGoogleLoading}
+            activeOpacity={0.85}
+          >
+            {isGoogleLoading ? (
+              <ActivityIndicator color="#b3006a" />
+            ) : (
+              <View style={styles.googleInner}>
+                <View style={styles.googleIcon}>
+                  <Text style={styles.googleIconText}>G</Text>
+                </View>
+                <Text style={styles.googleText}>Continuar con Google</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>¿No tienes una cuenta? </Text>
+            <Link href="/(auth)/register" style={styles.footerLink}>
+              Regístrate gratis
+            </Link>
+          </View>
+        </Animated.View>
+
+        <View style={styles.bottomBrand}>
+          <Text style={styles.paw}>🐾</Text>
+          <Text style={styles.brandText}>Mascotas · Adopción Responsable</Text>
+        </View>
+        <View style={styles.bottomLine} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, backgroundColor: C.background,
+    flexGrow: 1, backgroundColor: C.background,
     justifyContent: 'center', alignItems: 'center', padding: 24,
   },
   ambientContainer: {

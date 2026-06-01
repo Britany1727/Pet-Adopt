@@ -5,6 +5,7 @@ import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, ScrollView,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -17,7 +18,7 @@ const C = {
 
 function SentScreen({ email, onBack }: { email: string; onBack: () => void }) {
   return (
-    <View style={styles.container}>
+    <View style={styles.sentContainer}>
       <View style={styles.ambientContainer} pointerEvents="none">
         <View style={[styles.ambientGlow, { top: -80, left: -60, width: 200, height: 200 }]} />
         <View style={[styles.ambientGlow, { bottom: -60, right: -40, width: 180, height: 180 }]} />
@@ -106,7 +107,15 @@ export default function RegisterScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={styles.scrollInner}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.ambientContainer} pointerEvents="none">
         <View style={[styles.ambientGlow, { top: -80, left: -60, width: 200, height: 200 }]} />
         <View style={[styles.ambientGlow, { bottom: -60, right: -40, width: 180, height: 180 }]} />
@@ -242,11 +251,16 @@ export default function RegisterScreen() {
       </View>
       <View style={styles.bottomLine} />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  sentContainer: {
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    padding: 24, backgroundColor: C.background,
+  },
+  scrollInner: {
     flexGrow: 1, justifyContent: 'center', alignItems: 'center',
     padding: 24, backgroundColor: C.background,
   },

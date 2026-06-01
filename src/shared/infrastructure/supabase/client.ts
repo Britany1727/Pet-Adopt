@@ -20,9 +20,10 @@ export const supabase = createClient(
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
     {
         auth: {
-            storage: SecureStoreAdapter,// tokens guardaddos en almacenamiento del dispositivo
+            storage: SecureStoreAdapter,
             autoRefreshToken: true,
             persistSession: true,
+            flowType: 'pkce',
         },
     }
 );

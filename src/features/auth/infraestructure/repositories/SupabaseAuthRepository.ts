@@ -1,8 +1,11 @@
-import * as AuthSession from "expo-auth-session";
+import * as Linking from "expo-linking";
 import * as WebBrowser from "expo-web-browser";
 import { supabase } from "../../../../shared/infrastructure/supabase/client";
 import { User, UserRole } from "../../domain/entities/User";
-import { IAuthRepository, ProfileData } from "../../domain/repositories/IAuthRepository";
+import {
+  IAuthRepository,
+  ProfileData,
+} from "../../domain/repositories/IAuthRepository";
 
 const PROFILE_SELECT = `
   username,
@@ -20,24 +23,23 @@ const PROFILE_SELECT = `
 
 function mapProfile(userId: string, email: string, profile: any): User {
   return {
-    id:               userId,
+    id: userId,
     email,
-    username:         profile?.username          ?? "",
-    avatarUrl:        profile?.avatar_url        ?? undefined,
-    role:             profile?.role              ?? "cliente",
-    fullName:         profile?.full_name         ?? undefined,
-    identificacion:   profile?.identificacion    ?? undefined,
-    telefono:         profile?.telefono          ?? undefined,
-    ocupacion:        profile?.ocupacion         ?? undefined,
+    username: profile?.username ?? "",
+    avatarUrl: profile?.avatar_url ?? undefined,
+    role: profile?.role ?? "cliente",
+    fullName: profile?.full_name ?? undefined,
+    identificacion: profile?.identificacion ?? undefined,
+    telefono: profile?.telefono ?? undefined,
+    ocupacion: profile?.ocupacion ?? undefined,
     descripcionHogar: profile?.descripcion_hogar ?? undefined,
-    direccionTexto:   profile?.direccion_texto   ?? undefined,
-    latitude:         profile?.latitude          ?? undefined,
-    longitude:        profile?.longitude         ?? undefined,
+    direccionTexto: profile?.direccion_texto ?? undefined,
+    latitude: profile?.latitude ?? undefined,
+    longitude: profile?.longitude ?? undefined,
   };
 }
 
 export class SupabaseAuthRepository implements IAuthRepository {
-
   async login(email: string, password: string): Promise<User> {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -71,13 +73,13 @@ export class SupabaseAuthRepository implements IAuthRepository {
     // Con "Confirm email" activo en Supabase no hay sesión hasta confirmar
     if (!data.session) {
       throw new Error(
-        'Revisa tu correo y haz clic en el enlace de confirmación antes de iniciar sesión.'
+        "Revisa tu correo y haz clic en el enlace de confirmación antes de iniciar sesión.",
       );
     }
 
     return {
-      id:       data.session.user.id,
-      email:    data.session.user.email!,
+      id: data.session.user.id,
+      email: data.session.user.email!,
       username,
       role,
     };
@@ -88,7 +90,9 @@ export class SupabaseAuthRepository implements IAuthRepository {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return null;
     const { data: profile } = await supabase
       .from("profiles")
@@ -98,62 +102,39 @@ export class SupabaseAuthRepository implements IAuthRepository {
     return mapProfile(user.id, user.email!, profile);
   }
 
-  async signInWithGoogle(): Promise<User> {
-    const redirectUri = AuthSession.makeRedirectUri({ scheme: "petadoptapp" });
+  async loginWithGoogle(): Promise<void> {
+    const redirectUrl = Linking.createURL("auth-callback");
+
+    console.log("🔐 redirectUrl generado:", redirectUrl);
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: redirectUri,
+        redirectTo: redirectUrl,
         skipBrowserRedirect: true,
+        queryParams: { prompt: "select_account" },
       },
     });
-    if (error || !data?.url)
-      throw new Error(error?.message ?? "No se obtuvo la URL de Google");
 
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+    if (error) throw error;
+    if (!data?.url) throw new Error("No se pudo obtener la URL de autorización");
 
-    if (result.type !== "success" || !result.url) {
-      throw new Error("Login con Google cancelado");
-    }
+    console.log("🔐 OAuth URL de Supabase:", data.url);
 
-    const url = new URL(result.url);
-    const params = new URLSearchParams(url.hash.replace("#", ""));
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token") ?? "";
+    const res = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
-    if (!accessToken) throw new Error("No se recibió el token de Google");
+    if (res.type !== "success") return;
 
-    const { data: sessionData, error: sessionError } =
-      await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-    if (sessionError || !sessionData.user) throw sessionError;
+    const resultUrl = (res as any).url as string;
+    const qs = resultUrl.includes("?") ? resultUrl.split("?")[1] : "";
+    const params = new URLSearchParams(qs);
+    const code = params.get("code");
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select(PROFILE_SELECT)
-      .eq("id", sessionData.user.id)
-      .single();
+    if (!code) throw new Error("No se recibió el código de autorización");
 
-    const currentRole: UserRole = profile?.role ?? "cliente";
-
-    return {
-      id: sessionData.user.id,
-      email: sessionData.user.email!,
-      username:
-        profile?.username ??
-        sessionData.user.user_metadata?.full_name ??
-        sessionData.user.email!.split("@")[0],
-      avatarUrl:
-        profile?.avatar_url ??
-        sessionData.user.user_metadata?.avatar_url ??
-        undefined,
-      role: currentRole,
-    };
+    const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+    if (sessionError) throw sessionError;
   }
-
   async resetPasswordForEmail(email: string): Promise<void> {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       // El usuario cambia la contraseña en el navegador (Vercel)
@@ -180,7 +161,9 @@ export class SupabaseAuthRepository implements IAuthRepository {
       .eq("id", userId)
       .single();
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     return mapProfile(userId, user!.email!, profile);
   }
@@ -188,16 +171,19 @@ export class SupabaseAuthRepository implements IAuthRepository {
   async updateProfile(userId: string, data: ProfileData): Promise<User> {
     const payload: Record<string, any> = {};
 
-    if (data.username          !== undefined) payload.username          = data.username;
-    if (data.fullName          !== undefined) payload.full_name         = data.fullName;
-    if (data.identificacion    !== undefined) payload.identificacion    = data.identificacion;
-    if (data.telefono          !== undefined) payload.telefono          = data.telefono;
-    if (data.ocupacion         !== undefined) payload.ocupacion         = data.ocupacion;
-    if (data.descripcionHogar  !== undefined) payload.descripcion_hogar = data.descripcionHogar;
-    if (data.direccionTexto    !== undefined) payload.direccion_texto   = data.direccionTexto;
-    if (data.latitude          !== undefined) payload.latitude          = data.latitude;
-    if (data.longitude         !== undefined) payload.longitude         = data.longitude;
-    if (data.avatarUrl         !== undefined) payload.avatar_url        = data.avatarUrl;
+    if (data.username !== undefined) payload.username = data.username;
+    if (data.fullName !== undefined) payload.full_name = data.fullName;
+    if (data.identificacion !== undefined)
+      payload.identificacion = data.identificacion;
+    if (data.telefono !== undefined) payload.telefono = data.telefono;
+    if (data.ocupacion !== undefined) payload.ocupacion = data.ocupacion;
+    if (data.descripcionHogar !== undefined)
+      payload.descripcion_hogar = data.descripcionHogar;
+    if (data.direccionTexto !== undefined)
+      payload.direccion_texto = data.direccionTexto;
+    if (data.latitude !== undefined) payload.latitude = data.latitude;
+    if (data.longitude !== undefined) payload.longitude = data.longitude;
+    if (data.avatarUrl !== undefined) payload.avatar_url = data.avatarUrl;
 
     const { error } = await supabase
       .from("profiles")
@@ -211,7 +197,9 @@ export class SupabaseAuthRepository implements IAuthRepository {
       .eq("id", userId)
       .single();
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     return mapProfile(userId, user!.email!, profile);
   }

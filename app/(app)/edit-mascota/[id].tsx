@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, ScrollView, Image,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -177,7 +178,11 @@ export default function EditMascotaScreen() {
   const displayUri = imageChanged ? imageUri : (existingImageUrl ?? null);
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <Animated.View entering={FadeInDown.duration(400).springify()}>
         <Text style={styles.title}>Editar mascota</Text>
       </Animated.View>
@@ -277,6 +282,7 @@ export default function EditMascotaScreen() {
         </TouchableOpacity>
       </Animated.View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

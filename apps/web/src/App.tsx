@@ -5,9 +5,12 @@ import AuthCallback   from './pages/AuthCallback';
 export default function App() {
   const path = window.location.pathname;
 
-  if (path === '/update-password') return <UpdatePassword />;
-  if (path === '/confirm')         return <ConfirmAccount />;
-  if (path === '/auth-callback')   return <AuthCallback />;
+  if (path === '/update-password')              return <UpdatePassword />;
+  if (path === '/auth/callback/update-password') return <UpdatePassword />;
+  if (path === '/confirm')                      return <ConfirmAccount />;
+  if (path === '/auth/callback/confirm')        return <ConfirmAccount />;
+  if (path === '/auth/callback')                return <AuthCallback />;
+  if (path === '/auth-callback')                return <AuthCallback />;
 
   return (
     <div style={{ textAlign: 'center', padding: '80px 24px', fontFamily: 'Arial' }}>

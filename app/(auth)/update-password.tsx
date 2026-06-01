@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@shared/infrastructure/supabase/client';
@@ -50,72 +51,82 @@ export default function UpdatePasswordScreen() {
 
   if (updated) {
     return (
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <View style={styles.stitchBar} />
-          <Text style={styles.emoji}>✅</Text>
-          <Text style={styles.title}>Contraseña actualizada</Text>
-          <Text style={styles.sub}>Tu contraseña se ha cambiado correctamente.</Text>
-          <TouchableOpacity
-            style={styles.btn}
-            onPress={() => router.push('/(auth)/login')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnText}>Ir a iniciar sesión →</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.bottomLine} />
-      </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <View style={styles.card}>
+            <View style={styles.stitchBar} />
+            <Text style={styles.emoji}>✅</Text>
+            <Text style={styles.title}>Contraseña actualizada</Text>
+            <Text style={styles.sub}>Tu contraseña se ha cambiado correctamente.</Text>
+            <TouchableOpacity
+              style={styles.btn}
+              onPress={() => router.push('/(auth)/login')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.btnText}>Ir a iniciar sesión →</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.bottomLine} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <View style={styles.stitchBar} />
-        <Text style={styles.emoji}>🔐</Text>
-        <Text style={styles.title}>Nueva contraseña</Text>
-        <Text style={styles.sub}>Ingresa tu nueva contraseña para restablecer el acceso a tu cuenta.</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.card}>
+          <View style={styles.stitchBar} />
+          <Text style={styles.emoji}>🔐</Text>
+          <Text style={styles.title}>Nueva contraseña</Text>
+          <Text style={styles.sub}>Ingresa tu nueva contraseña para restablecer el acceso a tu cuenta.</Text>
 
-        <Text style={styles.label}>NUEVA CONTRASEÑA</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Mín. 8 caracteres, 1 mayúscula, 1 símbolo"
-          placeholderTextColor="rgba(143,110,121,0.5)"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <Text style={styles.label}>NUEVA CONTRASEÑA</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Mín. 8 caracteres, 1 mayúscula, 1 símbolo"
+            placeholderTextColor="rgba(143,110,121,0.5)"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
 
-        <Text style={styles.label}>CONFIRMAR CONTRASEÑA</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Repite la contraseña"
-          placeholderTextColor="rgba(143,110,121,0.5)"
-          value={confirm}
-          onChangeText={setConfirm}
-          secureTextEntry
-        />
+          <Text style={styles.label}>CONFIRMAR CONTRASEÑA</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Repite la contraseña"
+            placeholderTextColor="rgba(143,110,121,0.5)"
+            value={confirm}
+            onChangeText={setConfirm}
+            secureTextEntry
+          />
 
-        <TouchableOpacity
-          style={[styles.btn, loading && styles.btnDisabled]}
-          onPress={handleUpdate}
-          disabled={loading}
-          activeOpacity={0.85}
-        >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnText}>Actualizar contraseña →</Text>}
-        </TouchableOpacity>
-      </View>
-      <View style={styles.bottomLine} />
-    </View>
+          <TouchableOpacity
+            style={[styles.btn, loading && styles.btnDisabled]}
+            onPress={handleUpdate}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.btnText}>Actualizar contraseña →</Text>}
+          </TouchableOpacity>
+        </View>
+        <View style={styles.bottomLine} />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, backgroundColor: C.background,
+    flexGrow: 1, backgroundColor: C.background,
     justifyContent: 'center', alignItems: 'center', padding: 24,
   },
   card: {

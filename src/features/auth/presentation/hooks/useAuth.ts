@@ -1,4 +1,4 @@
-import { GoogleSignInUseCase } from "@features/auth/aplication/usecases/GoogleSignInUseCase";
+import { LoginWithGoogleUseCase } from "@features/auth/aplication/usecases/GoogleSignInUseCase";
 import { LoginUseCase } from "@features/auth/aplication/usecases/LoginUseCase";
 import { RegisterUseCase } from "@features/auth/aplication/usecases/RegisterUseCase";
 import { UpdateProfileUseCase } from "@features/auth/aplication/usecases/UpdateProfileUseCase";
@@ -19,7 +19,7 @@ type RegisterDto = {
 const authRepo = new SupabaseAuthRepository();
 const loginUseCase = new LoginUseCase(authRepo);
 const registerUseCase = new RegisterUseCase(authRepo);
-const googleSignInUseCase = new GoogleSignInUseCase(authRepo);
+const loginWithGoogleUseCase = new LoginWithGoogleUseCase(authRepo);
 const updateProfileUseCase = new UpdateProfileUseCase(authRepo);
 
 export function useAuth() {
@@ -45,15 +45,7 @@ export function useAuth() {
   });
 
   const googleMutation = useMutation({
-    mutationFn: () => googleSignInUseCase.execute(),
-    onSuccess: (user) => {
-      setUser(user);
-      if (user.role === "pending") {
-        router.replace("/(auth)/select-role" as any);
-      } else {
-        router.replace("/(app)");
-      }
-    },
+    mutationFn: () => loginWithGoogleUseCase.execute(),
   });
 
   const profileMutation = useMutation({
