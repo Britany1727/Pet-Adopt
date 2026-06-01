@@ -133,6 +133,79 @@ function AuthGuard() {
   }, [user, inChatRoom]);
 
   useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('global-adoption-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'adoption_requests',
+      }, async (payload) => {
+        if (payload.new.seller_id !== user.id) return;
+
+        try {
+          const { data: profile } = await supabase
+            .from('profiles').select('username').eq('id', payload.new.client_id).single();
+          const { data: mascota } = await supabase
+            .from('mascotas').select('name').eq('id', payload.new.mascota_id).single();
+
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: '🐾 Nueva solicitud de adopción',
+              body: `${profile?.username ?? 'Alguien'} quiere adoptar a ${mascota?.name ?? 'una mascota'}`,
+              sound: 'default',
+              badge: 1,
+              data: { screen: 'adoption-requests' },
+              ...(Platform.OS === 'android' && { channelId: 'default' }),
+            },
+            trigger: null,
+          });
+        } catch (e) {
+          console.warn('❌ Adoption request notification error:', e);
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'adoption_requests',
+      }, async (payload) => {
+        if (payload.new.client_id !== user.id) return;
+        if (payload.new.status === payload.old.status) return;
+
+        try {
+          const { data: mascota } = await supabase
+            .from('mascotas').select('name').eq('id', payload.new.mascota_id).single();
+          const petName = mascota?.name ?? 'una mascota';
+
+          const title = payload.new.status === 'accepted'
+            ? '✅ Solicitud aceptada'
+            : '❌ Solicitud rechazada';
+          const body = payload.new.status === 'accepted'
+            ? `Tu solicitud para adoptar a ${petName} fue aceptada`
+            : `Tu solicitud para adoptar a ${petName} fue rechazada`;
+
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title,
+              body,
+              sound: 'default',
+              badge: 1,
+              data: { screen: 'adoption-requests' },
+              ...(Platform.OS === 'android' && { channelId: 'default' }),
+            },
+            trigger: null,
+          });
+        } catch (e) {
+          console.warn('❌ Adoption update notification error:', e);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  useEffect(() => {
     if (!isAuthReady) return;
 
     const t = setTimeout(() => {

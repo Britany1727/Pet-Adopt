@@ -142,7 +142,7 @@ export default function GeneralChatScreen() {
       </View>
 
       <LottieView
-        source={require("../../src/assets/lotties/flower.json")}
+        source={require("../../src/assets/lotties/pet2.json")}
         autoPlay
         loop
         style={styles.lottieBackground}
